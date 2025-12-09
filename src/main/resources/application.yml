@@ -1,0 +1,26 @@
+server:
+  port: 13000
+
+spring:
+  application:
+    name: notificaiton-service
+
+  config:
+    import: "configserver:http://13.210.162.214:3100"
+
+eureka:
+  instance:
+    prefer-ip-address: true
+
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://13.210.162.214:3150/eureka/
+
+slack:
+  token: ${SLACK_OAUTH_TOKEN}
+
+logging:
+  level:
+    org.springframework.security: INFO
