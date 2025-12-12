@@ -17,6 +17,8 @@ spring:
       auto-offset-reset: earliest
       properties:
         spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: org.nextme.notificationservice.infrastructure.kafka.event.MonitoringNotificationEvent
 
 eureka:
   instance:
