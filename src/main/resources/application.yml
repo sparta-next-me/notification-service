@@ -8,6 +8,16 @@ spring:
   config:
     import: "configserver:http://13.210.162.214:3100"
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: notification-service
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+
 eureka:
   instance:
     prefer-ip-address: true
@@ -16,7 +26,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
     service-url:
-      defaultZone: http://13.210.162.214:3150/eureka/
+      defaultZone: http://34.50.7.8:3150//eureka/
 
 slack:
   token: ${SLACK_OAUTH_TOKEN}
