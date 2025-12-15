@@ -71,7 +71,7 @@ public class SlackCallbackController {
 
             ResponseEntity<JsonNode> response = client.post()
                 .uri(uriBuilder -> uriBuilder
-                    .path("/api/monitoring/remediation/execute")
+                    .path("/v1/promotions/monitoring/remediation/execute")
                     .queryParam("actionType", actionType)
                     .queryParam("approvedBy", approvedBy)
                     .build())
