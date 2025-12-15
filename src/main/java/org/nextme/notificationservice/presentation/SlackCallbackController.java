@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/slack")
+@RequestMapping("/v1/notifications")
 @RequiredArgsConstructor
 public class SlackCallbackController {
 
