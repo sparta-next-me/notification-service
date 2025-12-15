@@ -1,5 +1,6 @@
 package org.nextme.notificationservice.infrastructure.kafka.consumer;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.nextme.notificationservice.application.NotificationService;
 import org.nextme.notificationservice.infrastructure.kafka.KafkaConfig;
 import org.nextme.notificationservice.infrastructure.slack.SlackInteractiveMessageSend;
@@ -28,8 +29,12 @@ public class MonitoringNotificationConsumer {
 	 * actionId와 actionValue가 있으면 Interactive Button을 포함한 메시지 전송
 	 */
 	@KafkaListener(topics = KafkaConfig.MONITORING_NOTIFICATION_TOPIC, groupId = "notification-service")
-	public void handleMonitoringNotification(String eventJson) {
+	public void handleMonitoringNotification(ConsumerRecord<String, String> record) {
+		log.warn("===== MonitoringNotificationConsumer 호출됨 =====");
 		log.info("Received monitoring notification event from Kafka");
+		log.info("Partition: {}, Offset: {}", record.partition(), record.offset());
+		String eventJson = record.value();
+		log.info("Event JSON Length: {}", eventJson != null ? eventJson.length() : "null");
 		log.debug("Event JSON: {}", eventJson);
 
 		try {

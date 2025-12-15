@@ -70,6 +70,8 @@ public class SlackInteractiveMessageSend {
 
             // 2) Interactive 메시지 전송 (Block Kit 사용)
             var blocks = buildInteractiveBlocks(message, actionId, actionValue);
+            log.info("Built interactive blocks with actionId: {}, actionValue: {}", actionId, actionValue);
+            log.debug("Blocks: {}", blocks);
 
             ResponseEntity<JsonNode> sendResp = client.post()
                     .uri("/chat.postMessage")
@@ -89,7 +91,13 @@ public class SlackInteractiveMessageSend {
                     && sendBody.path("ok").asBoolean(false);
 
             if (!sendOk) {
-                log.warn("Failed to send interactive slack message. body={}", sendBody);
+                log.warn("Failed to send interactive slack message. Status: {}, body={}",
+                    sendResp.getStatusCode(), sendBody);
+                if (sendBody != null && sendBody.has("error")) {
+                    log.error("Slack API error: {}", sendBody.path("error").asText());
+                }
+            } else {
+                log.info("✅ Interactive message sent successfully with buttons");
             }
 
             return sendOk;
@@ -103,43 +111,52 @@ public class SlackInteractiveMessageSend {
      * Slack Block Kit 형식의 Interactive 블록 생성
      */
     private List<Map<String, Object>> buildInteractiveBlocks(String message, String actionId, String actionValue) {
-        return List.of(
-                // 메시지 섹션
-                Map.of(
-                        "type", "section",
-                        "text", Map.of(
-                                "type", "mrkdwn",
-                                "text", message
-                        )
-                ),
-                // 버튼 액션 섹션
-                Map.of(
-                        "type", "actions",
-                        "elements", List.of(
-                                // ✅ Yes 버튼
-                                Map.of(
-                                        "type", "button",
-                                        "text", Map.of(
-                                                "type", "plain_text",
-                                                "text", "✅ 실행"
-                                        ),
-                                        "style", "primary",
-                                        "action_id", actionId + "_approve",
-                                        "value", actionValue
+        List<Map<String, Object>> blocks = new java.util.ArrayList<>();
+
+        // 메시지 섹션 (markdown으로 전체 메시지 포함)
+        blocks.add(Map.of(
+                "type", "section",
+                "text", Map.of(
+                        "type", "mrkdwn",
+                        "text", message
+                )
+        ));
+
+        // 구분선
+        blocks.add(Map.of("type", "divider"));
+
+        // 버튼 액션 섹션
+        blocks.add(Map.of(
+                "type", "actions",
+                "block_id", "actions_block_" + System.currentTimeMillis(),
+                "elements", List.of(
+                        // ✅ Yes 버튼
+                        Map.of(
+                                "type", "button",
+                                "text", Map.of(
+                                        "type", "plain_text",
+                                        "text", "✅ 실행",
+                                        "emoji", true
                                 ),
-                                // ❌ No 버튼
-                                Map.of(
-                                        "type", "button",
-                                        "text", Map.of(
-                                                "type", "plain_text",
-                                                "text", "❌ 거부"
-                                        ),
-                                        "style", "danger",
-                                        "action_id", actionId + "_reject",
-                                        "value", actionValue
-                                )
+                                "style", "primary",
+                                "action_id", actionId + "_approve",
+                                "value", actionValue
+                        ),
+                        // ❌ No 버튼
+                        Map.of(
+                                "type", "button",
+                                "text", Map.of(
+                                        "type", "plain_text",
+                                        "text", "❌ 거부",
+                                        "emoji", true
+                                ),
+                                "style", "danger",
+                                "action_id", actionId + "_reject",
+                                "value", actionValue
                         )
                 )
-        );
+        ));
+
+        return blocks;
     }
 }

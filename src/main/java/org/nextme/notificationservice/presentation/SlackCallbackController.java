@@ -3,8 +3,8 @@ package org.nextme.notificationservice.presentation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,10 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class SlackCallbackController {
 
     private final ObjectMapper objectMapper;
-    private final KafkaTemplate<String, RemediationActionEvent> kafkaTemplate;
-
-    // Kafka topic 상수
-    private static final String REMEDIATION_TOPIC = "monitoring.remediation";
+    private final RestClient.Builder restClientBuilder;
 
     /**
      * Slack Interactive 메시지 버튼 클릭 Callback
@@ -45,13 +42,11 @@ public class SlackCallbackController {
 
             // actionId가 "monitoring_action_approve"이면 실행
             if (actionId.endsWith("_approve")) {
-                log.info("User approved remediation action: {}", actionValue);
+                log.info("User approved remediation action: {}, approvedBy: {}", actionValue, userId);
 
-                // Kafka 이벤트 발행하여 promotion-service의 RemediationExecutor 실행
-                RemediationActionEvent event = new RemediationActionEvent(actionValue, userId);
-                kafkaTemplate.send(REMEDIATION_TOPIC, "remediation", event);
+                // promotion-service의 remediation API 호출
+                callRemediationAPI(actionValue, userId);
 
-                log.info("Remediation event published for action: {}", actionValue);
             } else if (actionId.endsWith("_reject")) {
                 log.info("User rejected remediation action: {}", actionValue);
             }
@@ -66,10 +61,37 @@ public class SlackCallbackController {
     }
 
     /**
-     * Remediation Action 이벤트
+     * promotion-service의 remediation API 호출
      */
-    public static record RemediationActionEvent(
-        String actionType,
-        String approvedBy
-    ) {}
+    private void callRemediationAPI(String actionType, String approvedBy) {
+        try {
+            log.info("Calling remediation API - actionType: {}, approvedBy: {}", actionType, approvedBy);
+
+            RestClient client = restClientBuilder.baseUrl("http://localhost:11111").build();
+
+            ResponseEntity<JsonNode> response = client.post()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/api/monitoring/remediation/execute")
+                    .queryParam("actionType", actionType)
+                    .queryParam("approvedBy", approvedBy)
+                    .build())
+                .retrieve()
+                .toEntity(JsonNode.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                JsonNode body = response.getBody();
+                if (body != null) {
+                    boolean success = body.path("success").asBoolean(false);
+                    String message = body.path("message").asText();
+                    log.info("Remediation executed - success: {}, message: {}", success, message);
+                }
+            } else {
+                log.warn("Remediation API call failed with status: {}", response.getStatusCode());
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to call remediation API", e);
+        }
+    }
+
 }
