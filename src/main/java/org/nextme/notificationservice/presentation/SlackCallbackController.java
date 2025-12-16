@@ -2,6 +2,7 @@ package org.nextme.notificationservice.presentation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
@@ -20,6 +21,9 @@ public class SlackCallbackController {
 
     private final ObjectMapper objectMapper;
     private final RestClient.Builder restClientBuilder;
+
+    @Value("${promotion.service.url}")
+    private String promotionServiceUrl;
 
     /**
      * Slack Interactive 메시지 버튼 클릭 Callback
@@ -67,7 +71,7 @@ public class SlackCallbackController {
         try {
             log.info("Calling remediation API - actionType: {}, approvedBy: {}", actionType, approvedBy);
 
-            RestClient client = restClientBuilder.baseUrl("http://localhost:11111").build();
+            RestClient client = restClientBuilder.baseUrl(promotionServiceUrl).build();
 
             ResponseEntity<JsonNode> response = client.post()
                 .uri(uriBuilder -> uriBuilder
