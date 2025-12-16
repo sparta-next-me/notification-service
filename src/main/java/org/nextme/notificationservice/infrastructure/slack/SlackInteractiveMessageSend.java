@@ -43,29 +43,40 @@ public class SlackInteractiveMessageSend {
         }
 
         try {
-            // 1) 채널 열기
-            ResponseEntity<JsonNode> openResp = client.post()
-                    .uri("/conversations.open")
-                    .header("Authorization", "Bearer " + token)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("users", String.join(",", ids)))
-                    .retrieve()
-                    .toEntity(JsonNode.class);
+            // ID가 채널 ID(C로 시작)인지 사용자 ID(U로 시작)인지 확인
+            String firstId = ids.get(0);
+            String channelId;
 
-            JsonNode openBody = openResp.getBody();
-            boolean openOk = openResp.getStatusCode().is2xxSuccessful()
-                    && openBody != null
-                    && openBody.path("ok").asBoolean(false);
+            if (firstId.startsWith("C")) {
+                // 채널 ID를 직접 사용
+                log.info("Using channel ID directly: {}", firstId);
+                channelId = firstId;
+            } else {
+                // 사용자 ID인 경우 DM 채널 열기
+                log.info("Opening DM channel for user: {}", firstId);
+                ResponseEntity<JsonNode> openResp = client.post()
+                        .uri("/conversations.open")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of("users", String.join(",", ids)))
+                        .retrieve()
+                        .toEntity(JsonNode.class);
 
-            if (!openOk) {
-                log.warn("Failed to open slack conversation. body={}", openBody);
-                return false;
-            }
+                JsonNode openBody = openResp.getBody();
+                boolean openOk = openResp.getStatusCode().is2xxSuccessful()
+                        && openBody != null
+                        && openBody.path("ok").asBoolean(false);
 
-            String channelId = openBody.path("channel").path("id").asText();
-            if (channelId == null || channelId.isBlank()) {
-                log.warn("Slack channel id not found. body={}", openBody);
-                return false;
+                if (!openOk) {
+                    log.warn("Failed to open slack conversation. body={}", openBody);
+                    return false;
+                }
+
+                channelId = openBody.path("channel").path("id").asText();
+                if (channelId == null || channelId.isBlank()) {
+                    log.warn("Slack channel id not found. body={}", openBody);
+                    return false;
+                }
             }
 
             // 2) Interactive 메시지 전송 (Block Kit 사용)
