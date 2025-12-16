@@ -29,6 +29,10 @@ eureka:
 slack:
   token: ${SLACK_OAUTH_TOKEN}
 
+promotion:
+  service:
+    url: ${PROMOTION_SERVICE_URL}
+
 logging:
   level:
     org.springframework.security: INFO
