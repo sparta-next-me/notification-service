@@ -85,12 +85,8 @@ pipeline {
                         docker rm ${CONTAINER_NAME} || true
                       fi
 
-                      # Docker 네트워크가 없으면 생성
-                      docker network create nextme-network || true
-
-                      echo "Starting new user-service container..."
+                      echo "Starting new notification-service container..."
                       docker run -d --name ${CONTAINER_NAME} \\
-                        --network nextme-network \\
                         --env-file \${ENV_FILE} \\
                         -p ${HOST_PORT}:${CONTAINER_PORT} \\
                         ${FULL_IMAGE}
