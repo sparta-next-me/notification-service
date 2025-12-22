@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: next-me
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      imagePullSecrets:
+        - name: ghcr-cred
+      containers:
+        - name: notification-service
+          image: ghcr.io/sparta-next-me/notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 13000 # application.yml의 server.port와 일치
+
+          # 환경변수 주입 (KAFKA, EUREKA, SLACK_TOKEN 등 포함된 시크릿)
+          envFrom:
+            - secretRef:
+                name: promotion-env
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+              value: "true"
+            # Config Server 연결 설정
+            - name: SPRING_CONFIG_IMPORT
+              value: "optional:configserver:http://config-server.next-me.svc.cluster.local:3100"
+            - name: SPRING_CLOUD_CONFIG_NAME
+              value: "notification-service"
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx768m"
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 13000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 13000
+            initialDelaySeconds: 120
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "756Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: next-me
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - name: http
+      port: 13000
+      targetPort: 13000
+  type: ClusterIP
